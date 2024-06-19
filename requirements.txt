@@ -9,7 +9,7 @@ termcolor
 click
 asciitree
 fastapi
-weave
+# weave
 agentops
 langchain
 langchain_core

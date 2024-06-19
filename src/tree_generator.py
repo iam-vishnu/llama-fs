@@ -1,5 +1,8 @@
+#!/usr/local/bin/python3.10
+
 from groq import Groq
 import json
+import ollama
 import os
 
 FILE_PROMPT = """
@@ -13,7 +16,7 @@ Follow good naming conventions. Here are a few guidelines
 - Deliberately separate metadata elements : Avoid spaces or special characters in your file names
 If the file is already named well or matches a known convention, set the destination path to the same as the source path.
 
-Your response must be a JSON object with the following schema:
+Dont give any explanations. Your response must be a JSON object with the following schema: 
 ```json
 {
     "files": [
@@ -28,16 +31,26 @@ Your response must be a JSON object with the following schema:
 
 
 def create_file_tree(summaries: list):
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-    chat_completion = client.chat.completions.create(
+    # client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client = ollama.Client()
+    # chat_completion = client.chat.completions.create(
+    chat_completion = client.chat(
         messages=[
             {"role": "system", "content": FILE_PROMPT},
             {"role": "user", "content": json.dumps(summaries)},
         ],
-        model="llama3-70b-8192",
-        response_format={"type": "json_object"},  # Uncomment if needed
-        temperature=0,
+        model="llama3",
+        # response_format={"type": "json_object"},  # Uncomment if needed
+        # temperature=0,
     )
-
-    file_tree = json.loads(chat_completion.choices[0].message.content)["files"]
+    # print(chat_completion["message"]["content"])
+    a = chat_completion["message"]["content"]
+    print(json.loads(a)['files'])
+    print("Printing print(a['files'])")
+    # a = dict(a)
+    # print(a["files"])
+    file_tree = json.loads(a)['files']
+    # print(type(a))
+    # print(list(a['files']))
+    # file_tree = json.loads(chat_completion.choices[0].message.content)["files"]
     return file_tree

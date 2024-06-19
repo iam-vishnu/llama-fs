@@ -1,12 +1,14 @@
+#!/usr/local/bin/python3.10
+
 import asyncio
 import json
 import os
 from collections import defaultdict
 
-import agentops
+# import agentops
 import colorama
 import ollama
-import weave
+# import weave
 from groq import AsyncGroq, Groq
 from llama_index.core import Document, SimpleDirectoryReader
 from llama_index.core.schema import ImageDocument
@@ -85,6 +87,7 @@ def process_metadata(doc_dicts):
 
 
 async def summarize_document(doc, client):
+    client = ollama.AsyncClient()
     PROMPT = """
 You will be provided with the contents of a file along with its metadata. Provide a summary of the contents. The purpose of the summary is to organize files based on their content. To this end provide a concise but informative summary. Make the summary as specific to the file as possible.
 
@@ -98,35 +101,49 @@ Write your response a JSON object with the following schema:
 ```
 """.strip()
 
-    max_retries = 5
+    max_retries = 1
     attempt = 0
     while attempt < max_retries:
         try:
-            chat_completion = await client.chat.completions.create(
+            # chat_completion = await client.chat.completions.create(
+            print(type(doc), doc)
+            d = dict(doc)
+            print(d['file_path'])
+            chat_completion = await client.chat(
+            
                 messages=[
                     {"role": "system", "content": PROMPT},
                     {"role": "user", "content": json.dumps(doc)},
                 ],
-                model="llama3-70b-8192",
-                response_format={"type": "json_object"},
-                temperature=0,
+                model="llama3",
+                # response_format={"type": "json_object"},
+                # temperature=0,
             )
             break
         except Exception as e:
             print("Error status {}".format(e.status_code))
             attempt += 1
+    try:
 
-    summary = json.loads(chat_completion.choices[0].message.content)
+        # summary = json.loads(chat_completion.choices[0].message.content)
+        summary = {
+        "file_path": doc['file_path'],
+        "summary": chat_completion["message"]["content"],
+    }
+    except Exception as e:
+        print("Exception :  ", e)
 
     try:
-        print(colored(summary["file_path"], "green"))  # Print the filename in green
+        # print(colored(summary["file_path"], "green"))  # Print the filename in green
         print(summary["summary"])  # Print the summary of the contents
         print("-" * 80 + "\n")  # Print a separator line with spacing for readability
-    except KeyError as e:
+    except Exception as e:
         print(e)
         print(summary)
-
-    return summary
+    try:
+        return summary
+    except Exception as e:
+        print("Exception at 136", e)
 
 
 async def summarize_image_document(doc: ImageDocument, client):
@@ -183,6 +200,7 @@ async def get_summaries(documents):
     client = AsyncGroq(
         api_key=os.environ.get("GROQ_API_KEY"),
     )
+    # client = ollama.Client()
     summaries = await asyncio.gather(
         *[dispatch_summarize_document(doc, client) for doc in documents]
     )
@@ -237,6 +255,7 @@ def dispatch_summarize_document_sync(doc, client):
 
 
 def summarize_document_sync(doc, client):
+    client = ollama.Client()
     PROMPT = """
 You will be provided with the contents of a file along with its metadata. Provide a summary of the contents. The purpose of the summary is to organize files based on their content. To this end provide a concise but informative summary. Make the summary as specific to the file as possible.
 
@@ -250,16 +269,22 @@ Write your response a JSON object with the following schema:
 ```
 """.strip()
 
-    chat_completion = client.chat.completions.create(
+    # chat_completion = client.chat.completions.create(
+    chat_completion = client.chat(
         messages=[
             {"role": "system", "content": PROMPT},
             {"role": "user", "content": json.dumps(doc)},
         ],
-        model="llama3-70b-8192",
-        response_format={"type": "json_object"},
-        temperature=0,
+        model="llama3",
+        # response_format={"type": "json_object"},
+        # temperature=0,
     )
-    summary = json.loads(chat_completion.choices[0].message.content)
+    # summary = json.loads(chat_completion.choices[0].message.content)
+
+    summary = {
+        "file_path": doc.image_path,
+        "summary": chat_completion["message"]["content"],
+    }
 
     try:
         print(colored(summary["file_path"], "green"))  # Print the filename in green
